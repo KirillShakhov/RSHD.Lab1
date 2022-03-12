@@ -3,8 +3,9 @@
 /* временные таблица для формирования ответа */
 create temp table if not exists results(number bigserial, sc text, constraint_name text, type text, table_name text, column_name text, description text);
 create temp table if not exists params(schemes text);
-insert into params values (:v1);
+insert into params(schemes) values (:v1);
 
+--
 /* Анонимный блок */
 do $$
 declare
@@ -19,10 +20,16 @@ begin
                                                                             pgc.conname,
                                                                            pgc.contype,
                                                                            cls.relname,
-                                                                           cls.relname,
-                                                                           substring(pg_get_constraintdef(pgc.oid, true) from 'CHECK #"%#"%' for '#') from pg_constraint pgc
+                                                                           a.attname,
+                                                                           substring(pg_get_constraintdef(pgc.oid, true) from 'CHECK #"%#"%' for '#')
+        from pg_constraint pgc
         join pg_namespace nsp on nsp.oid = pgc.connamespace
         join pg_class cls on pgc.conrelid = cls.oid
+        cross join unnest(pgc.conkey) number(k)
+--         inner join pg_attribute attr on attr.attrelid = relfilenode
+        inner join pg_attribute a
+                   ON a.attrelid = pgc.conrelid
+                      AND a.attnum = number.k
 
 --         left join information_schema.constraint_column_usage ccu
 --                   on pgc.conname = ccu.constraint_name
@@ -40,8 +47,6 @@ $$ language 'plpgsql';
 /* Просмотр таблицы-ответа info */
 select * from params;
 select * from results;
-
--- select * from params where (select schemes from params where schemes = 'public') is not null;
 
 drop table results;
 drop table params;
