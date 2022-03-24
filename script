@@ -1,0 +1,7 @@
+#!/bin/bash
+if [ -n "$1" ]
+then
+psql -d studs -h pg -v v1="'$1'" -f lab.sql
+else
+echo "No parameters found."
+fi
